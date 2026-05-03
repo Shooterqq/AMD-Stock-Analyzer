@@ -1,3 +1,4 @@
+import ctypes
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout,
     QLineEdit, QPushButton, QLabel
@@ -10,8 +11,36 @@ class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
 
+        self.dark_style = """
+        QWidget {
+            background-color: #121212;
+            color: #e0e0e0;
+        }
+
+        QLineEdit, QTextEdit {
+            background-color: #1e1e1e;
+            border: 1px solid #333;
+            padding: 5px;
+        }
+
+        QPushButton {
+            background-color: #2d2d2d;
+            border: 1px solid #444;
+            padding: 6px;
+        }
+
+        QPushButton:hover {
+            background-color: #3a3a3a;
+        }
+
+        QLabel {
+            color: #e0e0e0;
+        }
+        """
+
         self.setWindowTitle("Stock Analyzer")
-        self.setMinimumSize(300, 150)
+        self.setStyleSheet(self.dark_style)
+        self.setMinimumSize(350, 200)
         layout = QVBoxLayout()
 
         self.input = QLineEdit()
@@ -49,3 +78,16 @@ class MainWindow(QWidget):
 
         except Exception as e:
             self.result_label.setText(f"Error: {str(e)}")
+
+
+def set_dark_title_bar(win_id):
+    DWMWA_USE_IMMERSIVE_DARK_MODE = 20  # Windows 10/11
+
+    value = ctypes.c_int(1)
+
+    ctypes.windll.dwmapi.DwmSetWindowAttribute(
+        ctypes.c_void_p(win_id),
+        DWMWA_USE_IMMERSIVE_DARK_MODE,
+        ctypes.byref(value),
+        ctypes.sizeof(value)
+    )
