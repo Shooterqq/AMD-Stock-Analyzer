@@ -1,1 +1,1 @@
-pip install yfinance pandas matplotlib PyQt5 numpy pytest
+pip install yfinance pandas matplotlib PyQt6 PyQt6-WebEngine numpy pytest pyinstaller pyqtgraph 
