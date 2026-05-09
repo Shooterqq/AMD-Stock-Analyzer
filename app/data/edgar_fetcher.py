@@ -161,6 +161,9 @@ class MainWindow(QWidget):
         self.graph.setMenuEnabled(False)
         self.graph.hideButtons()
 
+        self.graph.setLabel("left", "Price", units="USD")
+        self.graph.setLabel("bottom", "Time", units="days")
+
         right.addWidget(self.graph, 8)
 
         btn_row = QHBoxLayout()
