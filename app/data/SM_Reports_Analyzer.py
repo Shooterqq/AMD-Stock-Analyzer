@@ -25,6 +25,7 @@ from PyQt6.QtCore import Qt, QUrl
 from PyQt6.QtGui import QFont
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 import pyqtgraph as pg
+from PyQt6.QtGui import QIcon
 
 FORM_DESCRIPTIONS = {
     "4": "Form 4 - Insider Trading",
@@ -107,8 +108,8 @@ class DocWindow(QWidget):
 class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
-
-        self.setWindowTitle("EDGAR ANALYZER")
+        self.setWindowTitle("Stock Market Reports Analyzer")
+        self.setWindowIcon(QIcon("icon.ico"))
         self.resize(1600, 900)
 
         main_layout = QVBoxLayout(self)
@@ -280,6 +281,7 @@ class MainWindow(QWidget):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+    app.setWindowIcon(QIcon("icon.ico"))
     w = MainWindow()
     w.show()
     sys.exit(app.exec())
