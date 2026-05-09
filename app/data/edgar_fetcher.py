@@ -5,9 +5,30 @@ import webbrowser
 
 os.environ["QTWEBENGINE_DISABLE_SANDBOX"] = "1"
 
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QListWidget
-from PyQt5.QtWebEngineWidgets import QWebEngineView
-from PyQt5.QtCore import QUrl
+from PyQt6.QtWidgets import (
+    QApplication,
+    QWidget,
+    QVBoxLayout,
+    QTableWidget,
+    QTableWidgetItem,
+QAbstractItemView,
+)
+from PyQt6.QtWebEngineWidgets import QWebEngineView
+from PyQt6.QtCore import QUrl, Qt
+
+FORM_DESCRIPTIONS = {
+    "4": "Form 4 - Insider Trading",
+    "10-K": "Annual Report",
+    "10-Q": "Quarterly Report",
+    "8-K": "Current Report",
+    "ARS": "Annual Report to Shareholders",
+    "DEF 14A": "Proxy Statement",
+    "DEFA14A": "Proxy Statement Amendment",
+    "SCHEDULE 13G": "Large Ownership Report",
+    "SCHEDULE 13G/A": "Large Ownership Amendment",
+    "13F-HR": "Institutional Holdings Report",
+    "144": "Notice of Proposed Stock Sale",
+}
 
 headers = {"User-Agent": "MyApp piotr.wiski1@gmail.com"}
 
@@ -21,7 +42,7 @@ class Edgar:
         url = f"https://data.sec.gov/submissions/CIK{self.cik}.json"
         self.recent = requests.get(url, headers=headers).json()["filings"]["recent"]
 
-    def filings(self, limit=20):
+    def filings(self, limit=100):
         if self.recent is None:
             self.load_cik()
 
@@ -48,7 +69,6 @@ class DocWindow(QWidget):
         self.viewer.setUrl(QUrl(url))
         self.show()
 
-
 class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
@@ -58,35 +78,54 @@ class MainWindow(QWidget):
 
         layout = QVBoxLayout(self)
 
-        self.list_widget = QListWidget()
-        layout.addWidget(self.list_widget)
+        # TABLE
+        self.table = QTableWidget()
+        self.table.setColumnCount(2)
+        self.table.setHorizontalHeaderLabels(["Form", "Date"])
+        layout.addWidget(self.table)
 
         self.edgar = Edgar("0000002488")
         self.data = self.edgar.filings()
 
-        for form, date, acc, doc in self.data:
-            self.list_widget.addItem(f"{form} | {date} | {doc}")
+        self.table.setRowCount(len(self.data))
 
-        self.list_widget.itemDoubleClicked.connect(self.on_click)
+        for row, (form, date, acc, doc) in enumerate(self.data):
+
+            description = FORM_DESCRIPTIONS.get(form, form)
+
+            self.table.setItem(row, 0, QTableWidgetItem(description))
+            self.table.setItem(row, 1, QTableWidgetItem(date))
+
+        self.table.resizeColumnsToContents()
+
+        self.table.itemDoubleClicked.connect(self.on_click)
+
+        self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.table.setTabKeyNavigation(False)
 
         self.windows = []
 
     def on_click(self, item):
-        i = self.list_widget.row(item)
+        row = item.row()
 
-        form, date, acc, doc = self.data[i]
+        form, date, acc, doc = self.data[row]
 
         acc_no = acc.replace("-", "")
 
-        url = f"https://www.sec.gov/Archives/edgar/data/{int(self.edgar.cik)}/{acc_no}/{doc}"
+        url = (
+            f"https://www.sec.gov/Archives/edgar/data/"
+            f"{int(self.edgar.cik)}/{acc_no}/{doc}"
+        )
 
         print("OPEN:", url)
 
-        if doc.endswith(".pdf"):
+        if doc.lower().endswith(".pdf"):
             webbrowser.open(url)
             return
 
-        # XML / HTML → Qt window
         win = DocWindow(url)
         self.windows.append(win)
 
@@ -94,4 +133,5 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     w = MainWindow()
     w.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
+
