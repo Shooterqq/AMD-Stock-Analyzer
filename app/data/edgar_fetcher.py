@@ -18,6 +18,7 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QLabel,
     QComboBox,
+    QSpinBox,
 )
 
 from PyQt6.QtCore import Qt, QUrl
@@ -119,8 +120,17 @@ class MainWindow(QWidget):
         self.load_btn = QPushButton("Load")
         self.load_btn.clicked.connect(self.load_ticker)
 
+        self.limit_box = QSpinBox()
+        self.limit_box.setRange(0, 100)
+        self.limit_box.setValue(20)
+
+        self.limit_btn = QPushButton("Apply limit")
+        self.limit_btn.clicked.connect(self.apply_limit)
+
         top_layout.addWidget(self.ticker_box)
         top_layout.addWidget(self.load_btn)
+        top_layout.addWidget(self.limit_box)
+        top_layout.addWidget(self.limit_btn)
 
         main_layout.addLayout(top_layout)
 
@@ -180,11 +190,17 @@ class MainWindow(QWidget):
         self.current_ticker = "AMD"
         self.edgar = None
         self.data = []
+        self.limit = 20
 
         self.load_all("AMD")
 
     def ticker_to_cik(self, ticker):
         return TICKER_TO_CIK.get(ticker.upper())
+
+    def apply_limit(self):
+        self.limit = self.limit_box.value()
+        if self.edgar:
+            self.load_filings()
 
     def load_ticker(self):
         self.load_all(self.ticker_box.currentText())
@@ -203,7 +219,7 @@ class MainWindow(QWidget):
         self.load_filings()
 
     def load_filings(self):
-        self.data = self.edgar.filings()
+        self.data = self.edgar.filings(limit=self.limit)
         self.table.setRowCount(len(self.data))
 
         for row, (form, date, acc, doc) in enumerate(self.data):
