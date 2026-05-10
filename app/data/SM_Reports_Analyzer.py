@@ -20,6 +20,7 @@ from PyQt6.QtWidgets import (
     QSpinBox,
     QProgressBar,
     QDialog,
+    QFrame,
 )
 
 from PyQt6.QtCore import Qt, QUrl, QCoreApplication
@@ -142,6 +143,10 @@ class MainWindow(QWidget):
         self.resize(1600, 900)
 
         main_layout = QVBoxLayout(self)
+
+        ticker_label = QLabel("Select ticker")
+        main_layout.addWidget(ticker_label)
+
         top_layout = QHBoxLayout()
 
         self.ticker_box = QComboBox()
@@ -150,6 +155,21 @@ class MainWindow(QWidget):
         self.load_btn = QPushButton("Load")
         self.load_btn.clicked.connect(self.load_ticker)
 
+        top_layout.addWidget(self.ticker_box)
+        top_layout.addWidget(self.load_btn)
+
+        main_layout.addLayout(top_layout)
+
+        line1 = QFrame()
+        line1.setFrameShape(QFrame.Shape.HLine)
+        line1.setFrameShadow(QFrame.Shadow.Sunken)
+        main_layout.addWidget(line1)
+
+        reports_amount_label = QLabel("Reports amount")
+        main_layout.addWidget(reports_amount_label)
+
+        limit_layout = QHBoxLayout()
+
         self.limit_box = QSpinBox()
         self.limit_box.setRange(0, 100)
         self.limit_box.setValue(20)
@@ -157,14 +177,22 @@ class MainWindow(QWidget):
         self.limit_btn = QPushButton("Apply limit")
         self.limit_btn.clicked.connect(self.apply_limit)
 
-        top_layout.addWidget(self.ticker_box)
-        top_layout.addWidget(self.load_btn)
-        top_layout.addWidget(self.limit_box)
-        top_layout.addWidget(self.limit_btn)
+        limit_layout.addWidget(self.limit_box)
+        limit_layout.addWidget(self.limit_btn)
 
-        main_layout.addLayout(top_layout)
+        main_layout.addLayout(limit_layout)
+
+        line2 = QFrame()
+        line2.setFrameShape(QFrame.Shape.HLine)
+        line2.setFrameShadow(QFrame.Shadow.Sunken)
+        main_layout.addWidget(line2)
 
         content = QHBoxLayout()
+
+        left_layout = QVBoxLayout()
+
+        reports_label = QLabel("Reports")
+        left_layout.addWidget(reports_label)
 
         self.table = QTableWidget()
         self.table.setColumnCount(5)
@@ -175,8 +203,16 @@ class MainWindow(QWidget):
 
         self.table.cellDoubleClicked.connect(self.on_click)
 
-        content.addWidget(self.table, 3)
+        left_layout.addWidget(self.table)
 
+        content.addLayout(left_layout, 3)
+
+        sep = QFrame()
+        sep.setFrameShape(QFrame.Shape.VLine)
+        sep.setFrameShadow(QFrame.Shadow.Sunken)
+        content.addWidget(sep)
+
+        # ---------- RIGHT SIDE ----------
         right = QVBoxLayout()
 
         self.title = QLabel("")
