@@ -196,7 +196,7 @@ class MainWindow(QWidget):
 
         self.table = QTableWidget()
         self.table.setColumnCount(5)
-        self.table.setHorizontalHeaderLabels(["Form", "Date", "S", "P", "M"])
+        self.table.setHorizontalHeaderLabels(["Form", "Date", "Sale", "Purchase", "Mix"])
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
