@@ -2,7 +2,6 @@ import os
 import sys
 import re
 import requests
-import webbrowser
 import yfinance as yf
 
 os.environ["QTWEBENGINE_DISABLE_SANDBOX"] = "1"
@@ -19,9 +18,11 @@ from PyQt6.QtWidgets import (
     QLabel,
     QComboBox,
     QSpinBox,
+    QProgressBar,
+    QDialog,
 )
 
-from PyQt6.QtCore import Qt, QUrl
+from PyQt6.QtCore import Qt, QUrl, QCoreApplication
 from PyQt6.QtGui import QFont
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 import pyqtgraph as pg
@@ -90,6 +91,27 @@ class Edgar:
             self.recent["accessionNumber"][:limit],
             self.recent["primaryDocument"][:limit],
         ))
+
+class LoadingWindow(QDialog):
+    def __init__(self):
+        super().__init__()
+
+        self.setWindowTitle("Loading data...")
+        self.setWindowIcon(QIcon("icon.ico"))
+
+        self.setFixedSize(400, 120)
+
+        layout = QVBoxLayout(self)
+
+        self.label = QLabel("Downloading data from SEC API...")
+        self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        layout.addWidget(self.label)
+
+        self.progress = QProgressBar()
+        self.progress.setValue(0)
+
+        layout.addWidget(self.progress)
 
 class DocWindow(QWidget):
     def __init__(self, url):
@@ -203,6 +225,8 @@ class MainWindow(QWidget):
         self.data = []
         self.limit = 20
 
+        self.loading_window = LoadingWindow()
+
         self.load_all("AMD")
 
     def ticker_to_cik(self, ticker):
@@ -230,8 +254,20 @@ class MainWindow(QWidget):
         self.load_filings()
 
     def load_filings(self):
+
+        self.loading_window.progress.setValue(0)
+        self.loading_window.show()
+
+        QCoreApplication.processEvents()
+
         self.data = self.edgar.filings(limit=self.limit)
         self.table.setRowCount(len(self.data))
+
+        total = len(self.data)
+
+        if total == 0:
+            self.loading_window.close()
+            return
 
         for row, (form, date, acc, doc) in enumerate(self.data):
 
@@ -259,7 +295,15 @@ class MainWindow(QWidget):
             self.table.setItem(row, 3, QTableWidgetItem(str(p)))
             self.table.setItem(row, 4, QTableWidgetItem(str(m)))
 
+            progress_value = int(((row + 1) / total) * 100)
+
+            self.loading_window.progress.setValue(progress_value)
+
+            QCoreApplication.processEvents()
+
         self.table.resizeColumnsToContents()
+
+        self.loading_window.close()
 
     def load_chart(self, period):
         self.graph.clear()
