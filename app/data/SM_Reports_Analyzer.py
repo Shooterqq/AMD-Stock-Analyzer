@@ -95,14 +95,21 @@ class DocWindow(QWidget):
     def __init__(self, url):
         super().__init__()
         self.setWindowTitle("EDGAR Document")
-        self.resize(1100, 800)
+        self.resize(1200, 900)
 
         layout = QVBoxLayout(self)
 
-        self.viewer = QWebEngineView(self)
+        self.viewer = QWebEngineView()
         layout.addWidget(self.viewer)
 
-        self.viewer.setUrl(QUrl(url))
+        settings = self.viewer.settings()
+        settings.setAttribute(
+            settings.WebAttribute.PluginsEnabled,
+            True
+        )
+
+        self.viewer.load(QUrl(url))
+
         self.show()
 
 class MainWindow(QWidget):
@@ -272,12 +279,9 @@ class MainWindow(QWidget):
             f"{int(self.edgar.cik)}/{acc_no}/{doc}"
         )
 
-        if doc.lower().endswith(".pdf"):
-            webbrowser.open(url)
-            return
-
         win = DocWindow(url)
         self.windows.append(win)
+        win.show()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
