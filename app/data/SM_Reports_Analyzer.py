@@ -64,7 +64,6 @@ TICKER_TO_CIK = {
     "NVO": "0000353278",
 }
 
-
 def analyze_spm(html_text: str):
     matches = re.findall(r'<span class="SmallFormData">\s*([SPM])\s*</span>', html_text)
     return (
@@ -327,55 +326,68 @@ class MainWindow(QWidget):
         self.load_filings()
 
     def load_filings(self):
+        self.show_loading()
 
+        self.data = self.edgar.filings(limit=self.limit)
+        self.table.setRowCount(len(self.data))
+
+        if not self.data:
+            self.loading_window.close()
+            return
+
+        total = len(self.data)
+
+        for row, filing in enumerate(self.data):
+            self.process_filing(row, filing)
+
+            self.update_progress(row, total)
+
+        self.finish_loading()
+
+    def show_loading(self):
         self.loading_window.progress.setValue(0)
         self.loading_window.show()
 
         QCoreApplication.processEvents()
 
-        self.data = self.edgar.filings(limit=self.limit)
-        self.table.setRowCount(len(self.data))
+    def process_filing(self, row, filing):
+        form, date, acc, doc = filing
 
-        total = len(self.data)
+        desc = FORM_DESCRIPTIONS.get(form, form)
+        s, p, m = self.get_form4_analysis(form, acc, doc)
+        self.fill_row(row, desc, date, s, p, m)
 
-        if total == 0:
-            self.loading_window.close()
-            return
+    def get_form4_analysis(self, form, acc, doc):
+        if form != "4":
+            return "", "", ""
 
-        for row, (form, date, acc, doc) in enumerate(self.data):
+        try:
+            acc_no = acc.replace("-", "")
 
-            desc = FORM_DESCRIPTIONS.get(form, form)
+            url = (f"https://www.sec.gov/Archives/edgar/data/"
+                f"{int(self.edgar.cik)}/{acc_no}/{doc}")
 
-            s = p = m = ""
+            html = requests.get(url, headers=headers).text
 
-            if form == "4":
-                try:
-                    acc_no = acc.replace("-", "")
-                    url = (
-                        f"https://www.sec.gov/Archives/edgar/data/"
-                        f"{int(self.edgar.cik)}/{acc_no}/{doc}"
-                    )
+            return analyze_spm(html)
 
-                    html = requests.get(url, headers=headers).text
-                    s, p, m = analyze_spm(html)
+        except Exception:
+            return "?", "?", "?"
 
-                except:
-                    s, p, m = "?", "?", "?"
+    def fill_row(self, row, desc, date, s, p, m):
+        self.table.setItem(row, 0, QTableWidgetItem(desc))
+        self.table.setItem(row, 1, QTableWidgetItem(date))
+        self.table.setItem(row, 2, QTableWidgetItem(str(s)))
+        self.table.setItem(row, 3, QTableWidgetItem(str(p)))
+        self.table.setItem(row, 4, QTableWidgetItem(str(m)))
 
-            self.table.setItem(row, 0, QTableWidgetItem(desc))
-            self.table.setItem(row, 1, QTableWidgetItem(date))
-            self.table.setItem(row, 2, QTableWidgetItem(str(s)))
-            self.table.setItem(row, 3, QTableWidgetItem(str(p)))
-            self.table.setItem(row, 4, QTableWidgetItem(str(m)))
+    def update_progress(self, row, total):
+        progress_value = int(((row + 1) / total) * 100)
+        self.loading_window.progress.setValue(progress_value)
+        QCoreApplication.processEvents()
 
-            progress_value = int(((row + 1) / total) * 100)
-
-            self.loading_window.progress.setValue(progress_value)
-
-            QCoreApplication.processEvents()
-
+    def finish_loading(self):
         self.table.resizeColumnsToContents()
-
         self.loading_window.close()
 
     def load_chart(self, period):
