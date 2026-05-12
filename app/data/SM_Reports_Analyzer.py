@@ -74,7 +74,7 @@ def analyze_spm(html_text: str):
     )
 
 class Edgar:
-    def __init__(self, cik):
+    def __init__(self, cik: int):
         self.cik = cik
         self.recent = None
 
@@ -82,7 +82,7 @@ class Edgar:
         url = f"https://data.sec.gov/submissions/CIK{self.cik}.json"
         self.recent = requests.get(url, headers=headers).json()["filings"]["recent"]
 
-    def filings(self, limit=20):
+    def filings(self, limit: int = 20):
         if self.recent is None:
             self.load()
 
@@ -138,14 +138,34 @@ class DocWindow(QWidget):
 class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
+
+        self.windows = []
+        self.current_ticker = "AMD"
+        self.edgar = None
+        self.data = []
+        self.limit = 20
+
+        self.loading_window = LoadingWindow()
+
+        self.setup_window()
+        self.setup_main_layout()
+        self.setup_ticker_section()
+        self.setup_limit_section()
+        self.setup_content_section()
+
+        self.load_all("AMD")
+
+    def setup_window(self):
         self.setWindowTitle("Stock Market Reports Analyzer")
         self.setWindowIcon(QIcon("icon.ico"))
         self.resize(1600, 900)
 
-        main_layout = QVBoxLayout(self)
+    def setup_main_layout(self):
+        self.main_layout = QVBoxLayout(self)
 
+    def setup_ticker_section(self):
         ticker_label = QLabel("Select ticker")
-        main_layout.addWidget(ticker_label)
+        self.main_layout.addWidget(ticker_label)
 
         top_layout = QHBoxLayout()
 
@@ -158,15 +178,17 @@ class MainWindow(QWidget):
         top_layout.addWidget(self.ticker_box)
         top_layout.addWidget(self.load_btn)
 
-        main_layout.addLayout(top_layout)
+        self.main_layout.addLayout(top_layout)
 
         line1 = QFrame()
         line1.setFrameShape(QFrame.Shape.HLine)
         line1.setFrameShadow(QFrame.Shadow.Sunken)
-        main_layout.addWidget(line1)
 
+        self.main_layout.addWidget(line1)
+
+    def setup_limit_section(self):
         reports_amount_label = QLabel("Reports amount")
-        main_layout.addWidget(reports_amount_label)
+        self.main_layout.addWidget(reports_amount_label)
 
         limit_layout = QHBoxLayout()
 
@@ -180,15 +202,24 @@ class MainWindow(QWidget):
         limit_layout.addWidget(self.limit_box)
         limit_layout.addWidget(self.limit_btn)
 
-        main_layout.addLayout(limit_layout)
+        self.main_layout.addLayout(limit_layout)
 
         line2 = QFrame()
         line2.setFrameShape(QFrame.Shape.HLine)
         line2.setFrameShadow(QFrame.Shadow.Sunken)
-        main_layout.addWidget(line2)
 
+        self.main_layout.addWidget(line2)
+
+    def setup_content_section(self):
         content = QHBoxLayout()
 
+        self.setup_left_panel(content)
+        self.setup_separator(content)
+        self.setup_right_panel(content)
+
+        self.main_layout.addLayout(content)
+
+    def setup_left_panel(self, parent_layout):
         left_layout = QVBoxLayout()
 
         reports_label = QLabel("Reports")
@@ -196,31 +227,53 @@ class MainWindow(QWidget):
 
         self.table = QTableWidget()
         self.table.setColumnCount(5)
-        self.table.setHorizontalHeaderLabels(["Form", "Date", "Sale", "Purchase", "Mix"])
-        self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
-        self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.table.setHorizontalHeaderLabels(
+            ["Form", "Date", "Sale", "Purchase", "Mix"]
+        )
+
+        self.table.setSelectionBehavior(
+            QAbstractItemView.SelectionBehavior.SelectRows
+        )
+        self.table.setSelectionMode(
+            QAbstractItemView.SelectionMode.SingleSelection
+        )
+        self.table.setEditTriggers(
+            QAbstractItemView.EditTrigger.NoEditTriggers
+        )
 
         self.table.cellDoubleClicked.connect(self.on_click)
 
         left_layout.addWidget(self.table)
 
-        content.addLayout(left_layout, 3)
+        parent_layout.addLayout(left_layout, 3)
 
+    def setup_separator(self, parent_layout):
         sep = QFrame()
         sep.setFrameShape(QFrame.Shape.VLine)
         sep.setFrameShadow(QFrame.Shadow.Sunken)
-        content.addWidget(sep)
 
-        # ---------- RIGHT SIDE ----------
+        parent_layout.addWidget(sep)
+
+    def setup_right_panel(self, parent_layout):
         right = QVBoxLayout()
 
         self.title = QLabel("")
         self.title.setFont(QFont("Arial", 14))
         self.title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
         right.addWidget(self.title)
 
+        self.setup_graph(right)
+        self.setup_chart_buttons(right)
+
+        container = QWidget()
+        container.setLayout(right)
+
+        parent_layout.addWidget(container, 4)
+
+    def setup_graph(self, parent_layout):
         self.graph = pg.PlotWidget()
+
         self.graph.setBackground("black")
         self.graph.showGrid(x=True, y=True, alpha=0.3)
         self.graph.setMouseEnabled(x=False, y=False)
@@ -230,8 +283,9 @@ class MainWindow(QWidget):
         self.graph.setLabel("left", "Price", units="USD")
         self.graph.setLabel("bottom", "Time", units="days")
 
-        right.addWidget(self.graph, 8)
+        parent_layout.addWidget(self.graph, 8)
 
+    def setup_chart_buttons(self, parent_layout):
         btn_row = QHBoxLayout()
 
         for label, period in [
@@ -246,24 +300,7 @@ class MainWindow(QWidget):
             btn.clicked.connect(lambda _, p=period: self.load_chart(p))
             btn_row.addWidget(btn)
 
-        right.addLayout(btn_row)
-
-        container = QWidget()
-        container.setLayout(right)
-
-        content.addWidget(container, 4)
-
-        main_layout.addLayout(content)
-
-        self.windows = []
-        self.current_ticker = "AMD"
-        self.edgar = None
-        self.data = []
-        self.limit = 20
-
-        self.loading_window = LoadingWindow()
-
-        self.load_all("AMD")
+        parent_layout.addLayout(btn_row)
 
     def ticker_to_cik(self, ticker):
         return TICKER_TO_CIK.get(ticker.upper())
@@ -349,15 +386,13 @@ class MainWindow(QWidget):
 
         self.title.setText(f"{self.current_ticker} - {period}")
 
-    def on_click(self, row, col):
-        form, date, acc, doc = self.data[row]
+    def on_click(self, row):
+        acc, doc = self.data[row]
 
         acc_no = acc.replace("-", "")
 
-        url = (
-            f"https://www.sec.gov/Archives/edgar/data/"
-            f"{int(self.edgar.cik)}/{acc_no}/{doc}"
-        )
+        url = (f"https://www.sec.gov/Archives/edgar/data/"
+               f"{int(self.edgar.cik)}/{acc_no}/{doc}")
 
         win = DocWindow(url)
         self.windows.append(win)
