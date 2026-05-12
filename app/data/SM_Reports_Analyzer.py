@@ -387,7 +387,7 @@ class MainWindow(QWidget):
         self.title.setText(f"{self.current_ticker} - {period}")
 
     def on_click(self, row):
-        acc, doc = self.data[row]
+        form, date, acc, doc = self.data[row]
 
         acc_no = acc.replace("-", "")
 
