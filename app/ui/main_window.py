@@ -1,13 +1,7 @@
-import os
-import sys
-import re
-import requests
 import yfinance as yf
-
-os.environ["QTWEBENGINE_DISABLE_SANDBOX"] = "1"
+import requests
 
 from PyQt6.QtWidgets import (
-    QApplication,
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
@@ -18,123 +12,24 @@ from PyQt6.QtWidgets import (
     QLabel,
     QComboBox,
     QSpinBox,
-    QProgressBar,
-    QDialog,
     QFrame,
 )
 
-from PyQt6.QtCore import Qt, QUrl, QCoreApplication
-from PyQt6.QtGui import QFont
-from PyQt6.QtWebEngineWidgets import QWebEngineView
+from PyQt6.QtCore import Qt, QCoreApplication
+from PyQt6.QtGui import QFont, QIcon
+
 import pyqtgraph as pg
-from PyQt6.QtGui import QIcon
 
-FORM_DESCRIPTIONS = {
-    "4": "Form 4 - Insider Trading",
-    "10-K": "Annual Report",
-    "10-Q": "Quarterly Report",
-    "8-K": "Current Report",
-    "ARS": "Annual Report to Shareholders",
-    "DEF 14A": "Proxy Statement",
-    "13F-HR": "Institutional Holdings Report",
-    "144": "Notice of Proposed Stock Sale",
-}
+from core.constants import FORM_DESCRIPTIONS, TICKER_TO_CIK, headers
+from core.edgar import Edgar
+from utils.analyzer import analyze_spm
 
-headers = {"User-Agent": "MyApp piotr.wiski1@gmail.com"}
+from ui.loading_window import LoadingWindow
+from ui.doc_window import DocWindow
 
-TICKER_TO_CIK = {
-    "AMD": "0000002488",
-    "NVDA": "0001045810",
-    "AAPL": "0000320193",
-    "MSFT": "0000789019",
-    "GOOGL": "0001652044",
-    "AMZN": "0001018724",
-    "TSLA": "0001318605",
-    "META": "0001326801",
-    "AVGO": "0001730168",
-    "TXN": "0000097476",
-    "ADI": "0000006281",
-    "ARM": "0001973239",
-    "TSM": "0001046179",
-    "ASML": "0000937966",
-    "MCD": "0000063908",
-    "ORCL": "0001341439",
-    "XOM": "0000034088",
-    "CVX": "0000093410",
-    "NVO": "0000353278",
-}
-
-def analyze_spm(html_text: str):
-    matches = re.findall(r'<span class="SmallFormData">\s*([SPM])\s*</span>', html_text)
-    return (
-        matches.count("S"),
-        matches.count("P"),
-        matches.count("M"),
-    )
-
-class Edgar:
-    def __init__(self, cik: int):
-        self.cik = cik
-        self.recent = None
-
-    def load(self):
-        url = f"https://data.sec.gov/submissions/CIK{self.cik}.json"
-        self.recent = requests.get(url, headers=headers).json()["filings"]["recent"]
-
-    def filings(self, limit: int = 20):
-        if self.recent is None:
-            self.load()
-
-        return list(zip(
-            self.recent["form"][:limit],
-            self.recent["filingDate"][:limit],
-            self.recent["accessionNumber"][:limit],
-            self.recent["primaryDocument"][:limit],
-        ))
-
-class LoadingWindow(QDialog):
-    def __init__(self):
-        super().__init__()
-
-        self.setWindowTitle("Loading data...")
-        self.setWindowIcon(QIcon("icon.ico"))
-
-        self.setFixedSize(400, 120)
-
-        layout = QVBoxLayout(self)
-
-        self.label = QLabel("Downloading data from SEC API...")
-        self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        layout.addWidget(self.label)
-
-        self.progress = QProgressBar()
-        self.progress.setValue(0)
-
-        layout.addWidget(self.progress)
-
-class DocWindow(QWidget):
-    def __init__(self, url):
-        super().__init__()
-        self.setWindowTitle("EDGAR Document")
-        self.resize(1200, 900)
-
-        layout = QVBoxLayout(self)
-
-        self.viewer = QWebEngineView()
-        layout.addWidget(self.viewer)
-
-        settings = self.viewer.settings()
-        settings.setAttribute(
-            settings.WebAttribute.PluginsEnabled,
-            True
-        )
-
-        self.viewer.load(QUrl(url))
-
-        self.show()
 
 class MainWindow(QWidget):
+
     def __init__(self):
         super().__init__()
 
@@ -153,6 +48,8 @@ class MainWindow(QWidget):
         self.setup_content_section()
 
         self.load_all("AMD")
+
+    # ---------------- UI SETUP ----------------
 
     def setup_window(self):
         self.setWindowTitle("Stock Market Reports Analyzer")
@@ -186,8 +83,7 @@ class MainWindow(QWidget):
         self.main_layout.addWidget(line1)
 
     def setup_limit_section(self):
-        reports_amount_label = QLabel("Reports amount")
-        self.main_layout.addWidget(reports_amount_label)
+        self.main_layout.addWidget(QLabel("Reports amount"))
 
         limit_layout = QHBoxLayout()
 
@@ -221,8 +117,7 @@ class MainWindow(QWidget):
     def setup_left_panel(self, parent_layout):
         left_layout = QVBoxLayout()
 
-        reports_label = QLabel("Reports")
-        left_layout.addWidget(reports_label)
+        left_layout.addWidget(QLabel("Reports"))
 
         self.table = QTableWidget()
         self.table.setColumnCount(5)
@@ -250,7 +145,6 @@ class MainWindow(QWidget):
         sep = QFrame()
         sep.setFrameShape(QFrame.Shape.VLine)
         sep.setFrameShadow(QFrame.Shadow.Sunken)
-
         parent_layout.addWidget(sep)
 
     def setup_right_panel(self, parent_layout):
@@ -262,29 +156,17 @@ class MainWindow(QWidget):
 
         right.addWidget(self.title)
 
-        self.setup_graph(right)
-        self.setup_chart_buttons(right)
-
-        container = QWidget()
-        container.setLayout(right)
-
-        parent_layout.addWidget(container, 4)
-
-    def setup_graph(self, parent_layout):
         self.graph = pg.PlotWidget()
-
         self.graph.setBackground("black")
         self.graph.showGrid(x=True, y=True, alpha=0.3)
         self.graph.setMouseEnabled(x=False, y=False)
         self.graph.setMenuEnabled(False)
         self.graph.hideButtons()
-
         self.graph.setLabel("left", "Price", units="USD")
         self.graph.setLabel("bottom", "Time", units="days")
 
-        parent_layout.addWidget(self.graph, 8)
+        right.addWidget(self.graph, 8)
 
-    def setup_chart_buttons(self, parent_layout):
         btn_row = QHBoxLayout()
 
         for label, period in [
@@ -299,7 +181,14 @@ class MainWindow(QWidget):
             btn.clicked.connect(lambda _, p=period: self.load_chart(p))
             btn_row.addWidget(btn)
 
-        parent_layout.addLayout(btn_row)
+        right.addLayout(btn_row)
+
+        container = QWidget()
+        container.setLayout(right)
+
+        parent_layout.addWidget(container, 4)
+
+    # ---------------- LOGIC ----------------
 
     def ticker_to_cik(self, ticker):
         return TICKER_TO_CIK.get(ticker.upper())
@@ -326,7 +215,9 @@ class MainWindow(QWidget):
         self.load_filings()
 
     def load_filings(self):
-        self.show_loading()
+        self.loading_window.progress.setValue(0)
+        self.loading_window.show()
+        QCoreApplication.processEvents()
 
         self.data = self.edgar.filings(limit=self.limit)
         self.table.setRowCount(len(self.data))
@@ -339,22 +230,16 @@ class MainWindow(QWidget):
 
         for row, filing in enumerate(self.data):
             self.process_filing(row, filing)
-
             self.update_progress(row, total)
 
         self.finish_loading()
-
-    def show_loading(self):
-        self.loading_window.progress.setValue(0)
-        self.loading_window.show()
-
-        QCoreApplication.processEvents()
 
     def process_filing(self, row, filing):
         form, date, acc, doc = filing
 
         desc = FORM_DESCRIPTIONS.get(form, form)
         s, p, m = self.get_form4_analysis(form, acc, doc)
+
         self.fill_row(row, desc, date, s, p, m)
 
     def get_form4_analysis(self, form, acc, doc):
@@ -364,8 +249,10 @@ class MainWindow(QWidget):
         try:
             acc_no = acc.replace("-", "")
 
-            url = (f"https://www.sec.gov/Archives/edgar/data/"
-                f"{int(self.edgar.cik)}/{acc_no}/{doc}")
+            url = (
+                f"https://www.sec.gov/Archives/edgar/data/"
+                f"{int(self.edgar.cik)}/{acc_no}/{doc}"
+            )
 
             html = requests.get(url, headers=headers).text
 
@@ -403,16 +290,11 @@ class MainWindow(QWidget):
 
         acc_no = acc.replace("-", "")
 
-        url = (f"https://www.sec.gov/Archives/edgar/data/"
-               f"{int(self.edgar.cik)}/{acc_no}/{doc}")
+        url = (
+            f"https://www.sec.gov/Archives/edgar/data/"
+            f"{int(self.edgar.cik)}/{acc_no}/{doc}"
+        )
 
         win = DocWindow(url)
         self.windows.append(win)
         win.show()
-
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    app.setWindowIcon(QIcon("icon.ico"))
-    w = MainWindow()
-    w.show()
-    sys.exit(app.exec())

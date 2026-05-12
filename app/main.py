@@ -1,20 +1,19 @@
-from PyQt5.QtWidgets import QApplication
+import os
 import sys
 
-from app.ui.main_window import MainWindow
-from app.ui.main_window import set_dark_title_bar
+os.environ["QTWEBENGINE_DISABLE_SANDBOX"] = "1"
 
+from PyQt6.QtWidgets import QApplication
+from PyQt6.QtGui import QIcon
 
-def main():
-    app = QApplication(sys.argv)
-
-    window = MainWindow()
-    window.show()
-
-    set_dark_title_bar(int(window.winId()))
-
-    sys.exit(app.exec_())
+from ui.main_window import MainWindow
 
 
 if __name__ == "__main__":
-    main()
+    app = QApplication(sys.argv)
+    app.setWindowIcon(QIcon("icon.ico"))
+
+    w = MainWindow()
+    w.show()
+
+    sys.exit(app.exec())
