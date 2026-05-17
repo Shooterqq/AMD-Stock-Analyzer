@@ -29,7 +29,6 @@ from ui.doc_window import DocWindow
 
 
 class MainWindow(QWidget):
-
     def __init__(self):
         super().__init__()
 
@@ -49,7 +48,7 @@ class MainWindow(QWidget):
 
         self.load_all("AMD")
 
-    # ---------------- UI SETUP ----------------
+    # ---------------- LABELS ----------------
 
     def setup_window(self):
         self.setWindowTitle("Stock Market Reports Analyzer")
@@ -106,13 +105,13 @@ class MainWindow(QWidget):
         self.main_layout.addWidget(line2)
 
     def setup_content_section(self):
-        content = QHBoxLayout()
+        content_layout = QHBoxLayout()
 
-        self.setup_left_panel(content)
-        self.setup_separator(content)
-        self.setup_right_panel(content)
+        self.setup_left_panel(content_layout)
+        self.setup_separator(content_layout)
+        self.setup_right_panel(content_layout)
 
-        self.main_layout.addLayout(content)
+        self.main_layout.addLayout(content_layout)
 
     def setup_left_panel(self, parent_layout):
         left_layout = QVBoxLayout()
@@ -121,24 +120,15 @@ class MainWindow(QWidget):
 
         self.table = QTableWidget()
         self.table.setColumnCount(5)
-        self.table.setHorizontalHeaderLabels(
-            ["Form", "Date", "Sale", "Purchase", "Mix"]
-        )
+        self.table.setHorizontalHeaderLabels(["Form", "Date", "Sale", "Purchase", "Mix"])
 
-        self.table.setSelectionBehavior(
-            QAbstractItemView.SelectionBehavior.SelectRows
-        )
-        self.table.setSelectionMode(
-            QAbstractItemView.SelectionMode.SingleSelection
-        )
-        self.table.setEditTriggers(
-            QAbstractItemView.EditTrigger.NoEditTriggers
-        )
+        self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
 
         self.table.cellDoubleClicked.connect(self.on_click)
 
         left_layout.addWidget(self.table)
-
         parent_layout.addLayout(left_layout, 3)
 
     def setup_separator(self, parent_layout):
@@ -148,13 +138,13 @@ class MainWindow(QWidget):
         parent_layout.addWidget(sep)
 
     def setup_right_panel(self, parent_layout):
-        right = QVBoxLayout()
+        right_layout = QVBoxLayout()
 
         self.title = QLabel("")
         self.title.setFont(QFont("Arial", 14))
         self.title.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        right.addWidget(self.title)
+        right_layout.addWidget(self.title)
 
         self.graph = pg.PlotWidget()
         self.graph.setBackground("black")
@@ -165,7 +155,7 @@ class MainWindow(QWidget):
         self.graph.setLabel("left", "Price", units="USD")
         self.graph.setLabel("bottom", "Time", units="days")
 
-        right.addWidget(self.graph, 8)
+        right_layout.addWidget(self.graph, 8)
 
         btn_row = QHBoxLayout()
 
@@ -181,10 +171,10 @@ class MainWindow(QWidget):
             btn.clicked.connect(lambda _, p=period: self.load_chart(p))
             btn_row.addWidget(btn)
 
-        right.addLayout(btn_row)
+        right_layout.addLayout(btn_row)
 
         container = QWidget()
-        container.setLayout(right)
+        container.setLayout(right_layout)
 
         parent_layout.addWidget(container, 4)
 
@@ -249,10 +239,8 @@ class MainWindow(QWidget):
         try:
             acc_no = acc.replace("-", "")
 
-            url = (
-                f"https://www.sec.gov/Archives/edgar/data/"
-                f"{int(self.edgar.cik)}/{acc_no}/{doc}"
-            )
+            url = (f"https://www.sec.gov/Archives/edgar/data/"
+                   f"{int(self.edgar.cik)}/{acc_no}/{doc}")
 
             html = requests.get(url, headers=headers).text
 
@@ -290,10 +278,8 @@ class MainWindow(QWidget):
 
         acc_no = acc.replace("-", "")
 
-        url = (
-            f"https://www.sec.gov/Archives/edgar/data/"
-            f"{int(self.edgar.cik)}/{acc_no}/{doc}"
-        )
+        url = (f"https://www.sec.gov/Archives/edgar/data/"
+               f"{int(self.edgar.cik)}/{acc_no}/{doc}")
 
         win = DocWindow(url)
         self.windows.append(win)

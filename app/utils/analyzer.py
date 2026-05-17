@@ -1,6 +1,5 @@
 import re
 
-
 def analyze_spm(html_text: str):
     matches = re.findall(
         r'<span class="SmallFormData">\s*([SPM])\s*</span>',

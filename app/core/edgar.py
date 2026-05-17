@@ -1,8 +1,6 @@
 import requests
 
 from core.constants import headers
-from utils.analyzer import analyze_spm
-
 
 class Edgar:
     def __init__(self, cik: int):
